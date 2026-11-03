@@ -1,8 +1,10 @@
-/* Lavanderos Janitorial — quote form API
-   POST /api/quote  ->  sends an email to QUOTE_TO
-   Runs behind Nginx on 127.0.0.1:PORT, managed by PM2. */
+/* Lavanderos Janitorial — web server
+   - Serves the static site from ../public
+   - POST /api/quote  ->  sends an email to QUOTE_TO
+   Runs on 127.0.0.1:PORT behind CloudPanel's Nginx (Node.js site), managed by PM2. */
 
 require("dotenv").config({ path: require("path").join(__dirname, ".env") });
+const path = require("path");
 const express = require("express");
 const nodemailer = require("nodemailer");
 
@@ -14,6 +16,18 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", "loopback");
 app.use(express.json({ limit: "20kb" }));
+
+/* Security headers */
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+  });
+  next();
+});
 
 /* Simple in-memory rate limit: 5 requests / 15 min per IP */
 const hits = new Map();
@@ -95,6 +109,25 @@ app.post("/api/quote", async (req, res) => {
   }
 });
 
-app.use((req, res) => res.status(404).json({ ok: false }));
+/* Static site (only the public folder is ever served) */
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
+app.use(express.static(PUBLIC_DIR, {
+  dotfiles: "ignore",
+  setHeaders: (res, file) => {
+    if (/\.(css|js|svg|png|jpe?g|webp|ico|woff2)$/.test(file)) res.set("Cache-Control", "public, max-age=86400");
+    else res.set("Cache-Control", "no-cache");
+  }
+}));
+
+app.use("/api", (req, res) => res.status(404).json({ ok: false }));
+app.use((req, res) => {
+  const fr = req.path.startsWith("/fr");
+  res.status(404).type("html").send(
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<title>404</title><body style="font-family:Arial,sans-serif;text-align:center;padding:80px 16px;color:#0f2a44">` +
+    `<h1>404</h1><p>${fr ? "Page introuvable." : "Page not found."}</p>` +
+    `<p><a href="${fr ? "/fr/" : "/"}" style="color:#2e9e5b">${fr ? "Retour à l’accueil" : "Back to home"}</a></p></body>`
+  );
+});
 
 app.listen(PORT, "127.0.0.1", () => console.log(`Lavanderos quote API on 127.0.0.1:${PORT}`));

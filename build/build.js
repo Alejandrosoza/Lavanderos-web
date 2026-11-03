@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { BIZ, en, fr } = require("./content");
 
-const ROOT = path.join(__dirname, "..");
+const ROOT = path.join(__dirname, "..", "public");
 
 const esc = (s) => String(s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

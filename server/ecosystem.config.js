@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: "lavanderos-api",
+      name: "lavanderos-web",
       script: "server.js",
-      cwd: "/var/www/lavanderos-web/server",
+      cwd: "/home/lavanderos/htdocs/lavanderosjanitorial.ca/server",
       instances: 1,
       autorestart: true,
       max_memory_restart: "150M",
